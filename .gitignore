@@ -1,0 +1,10 @@
+/temp/
+/.venv/
+/.idea/
+/.idea/inspectionProfiles/
+/.idea/.gitignore
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/vcs.xml
+/.idea/VulnScan.iml
+/.idea/workspace.xml

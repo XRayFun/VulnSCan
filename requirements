@@ -1,0 +1,13 @@
+aiofiles==24.1.0
+asyncio==3.4.3
+certifi==2024.8.30
+charset-normalizer==3.4.0
+DateTime==5.5
+gevent==24.10.3
+greenlet==3.1.1
+idna==3.10
+pytz==2024.2
+requests==2.32.3
+urllib3==2.2.3
+zope.event==5.0
+zope.interface==7.1.1
