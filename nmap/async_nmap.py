@@ -62,7 +62,7 @@ async def _start_scan(args):
     resolved_ips = []
     domains = list(set(domains))
     for domain in domains:
-        domain_ips = await find_subdomains(domain, args.domain_level, args.brute_force_file)
+        domain_ips = await find_subdomains(domain, args.brute_force_level, args.brute_force_file)
         resolved_ips.extend(domain_ips)
 
     all_ips = list(set(ips + resolved_ips))

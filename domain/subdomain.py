@@ -25,7 +25,7 @@ async def _load_subdomains_from_file(file_path):
 
 async def find_subdomains(domains, level=BRUTEFORCE_LEVEL, brute_force_file=BRUTEFORCE_FILE, output_folder=BRUTEFORCE_OUTPUT_FOLDER, output_format=BRUTEFORCE_OUTPUT_FORMAT):
     found_ips = set()  # To store unique IP addresses
-
+    scan_log.info_status_result(_module_name, "STARTED", "The search for subdomains has begun")
     async def search_subdomains(current_domain, current_level, output_file):
         if current_level > 0:
             subdomains = [f"{sub}.{current_domain}" for sub in COMMON_SUBDOMAINS]
