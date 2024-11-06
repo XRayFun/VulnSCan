@@ -1,28 +1,30 @@
 import argparse
 import asyncio
 from datetime import datetime
-
 import aiofiles
-import os
 
 from _conf import COMMON_SUBDOMAINS, BRUTEFORCE_FILE, BRUTEFORCE_LEVEL, BRUTEFORCE_OUTPUT_FOLDER, BRUTEFORCE_OUTPUT_FORMAT
-from _log import log_info, log_error
+from _log import scan_log
+from _utils import async_load_targets
 from domain import resolve_domain
 
 
-async def load_subdomains_from_file(file_path):
+_module_name = "domain.subdomain"
+
+
+async def _load_subdomains_from_file(file_path):
     subdomains = []
     async with aiofiles.open(file_path, mode='r') as f:
         async for line in f:
             subdomain = line.strip()
             if subdomain and not subdomain.startswith('#'):
                 subdomains.append(subdomain)
-    log_info(f"Loaded {len(subdomains)} subdomains from '{file_path}'")
+    scan_log.info_status_result(_module_name, "LOADED", f"{len(subdomains)} subdomains from '{file_path}'")
     return subdomains
 
 
 async def find_subdomains(domains, level=BRUTEFORCE_LEVEL, brute_force_file=BRUTEFORCE_FILE, output_folder=BRUTEFORCE_OUTPUT_FOLDER, output_format=BRUTEFORCE_OUTPUT_FORMAT):
-    found_ips = set()  # Для хранения уникальных IP-адресов
+    found_ips = set()  # To store unique IP addresses
 
     async def search_subdomains(current_domain, current_level, output_file):
         if current_level > 0:
@@ -31,7 +33,7 @@ async def find_subdomains(domains, level=BRUTEFORCE_LEVEL, brute_force_file=BRUT
             subdomains = [current_domain]
 
         if brute_force_file and current_level > 0:
-            additional_subdomains = await load_subdomains_from_file(brute_force_file)
+            additional_subdomains = await _load_subdomains_from_file(brute_force_file)
             subdomains.extend([f"{sub}.{current_domain}" for sub in additional_subdomains])
 
         resolved_ips = await asyncio.gather(*[resolve_domain(sub) for sub in subdomains])
@@ -41,7 +43,7 @@ async def find_subdomains(domains, level=BRUTEFORCE_LEVEL, brute_force_file=BRUT
             found_ips.add(ip)
 
         if resolved_ips:
-            # Запись результатов в файл по мере их получения
+            # Recording results to a file as they are received
             if output_file:
                 if output_format == 'domain-ip':
                     await output_file.write(f"{current_domain} - {', '.join(resolved_ips)}\n")
@@ -52,27 +54,27 @@ async def find_subdomains(domains, level=BRUTEFORCE_LEVEL, brute_force_file=BRUT
             tasks = [search_subdomains(sub, current_level + 1, output_file) for sub in subdomains]
             await asyncio.gather(*tasks)
 
-    # Открытие файла для записи
-    output_file_path = f"{output_folder}/domain.subdomain results {datetime.now()}.txt" if output_folder else None
+    # Opening a file for writing
+    output_file_path = f"{output_folder}domain.subdomain results {datetime.now()}.txt" if output_folder else None
     output_file = await aiofiles.open(output_file_path, mode='w') if output_file_path else None
 
-    # Обработка каждого домена
+    # Processing of each domain
     for domain in domains:
         await search_subdomains(domain, 0, output_file)
 
-    # Закрытие файла, если он был открыт
+    # Closing a file if it has been opened
     if output_file:
         await output_file.close()
-        log_info(f"Results saved to '{output_file_path}' file")
+        scan_log.info_status_result(_module_name, "COMPLETE", f"Results saved to '{output_file_path}' file")
 
-    return list(found_ips)  # Вернуть найденные IP-адреса
+    return list(found_ips)  # Return found IP addresses
 
 
-async def load_domains_from_file(file_path):
+async def _load_domains_from_file(file_path):
     async with aiofiles.open(file_path, mode='r') as f:
         content = await f.read()
         domains = [domain.strip() for domain in content.split(',') if domain.strip()]
-    log_info(f"Loaded {len(domains)} domains from '{file_path}'")
+    scan_log.info_status_result(_module_name, "LOADED", f"{len(domains)} domains from '{file_path}'")
     return domains
 
 
@@ -96,9 +98,9 @@ def main(remaining_args):
     if args.domains:
         domains = [domain.strip() for domain in args.domains.split(',')]
     elif args.input_file:
-        domains = asyncio.run(load_domains_from_file(args.input_file))
+        _, domains = asyncio.run(async_load_targets(args.input_file))
 
     domains = list(set(domains))
 
-    # Запуск асинхронного поиска для всех доменов
+    # Running asynchronous search for all domains
     asyncio.run(find_subdomains(domains, args.level, args.brute_force_file, args.output_folder, args.output_format))

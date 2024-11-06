@@ -1,3 +1,4 @@
-from .info import *
-from .warn import *
-from .error import *
+from .logger import Logger
+
+
+scan_log = Logger()

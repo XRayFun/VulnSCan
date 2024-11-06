@@ -3,17 +3,19 @@ import sys
 import threading
 import uuid
 
-from _log import log_error, log_info, log_warn
+from _log import scan_log
 
 
 _monitor_threads = {}
 _stop_events = {}
 
+_module_name = "utils.check_connection"
+
 
 def check_internet_connection():
     try:
         subprocess.check_call(
-            ["ping", "-c", "1", "www.google.ru"],
+            ["ping", "-c", "1", "google.com"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
@@ -22,7 +24,7 @@ def check_internet_connection():
         return False
 
 
-def monitor_internet_connection(stop_event, monitor_id, max_retries=10, delay=5):
+def _monitor_internet_connection(stop_event, monitor_id, max_retries=10, delay=5):
     retry_count = 0
     internet = False
 
@@ -33,13 +35,13 @@ def monitor_internet_connection(stop_event, monitor_id, max_retries=10, delay=5)
             stop_event.wait(delay)
         else:
             if retry_count % 2 == 0:
-                log_warn(f"Monitor {monitor_id}: Internet is still down.")
+                scan_log.warn_result(_module_name, f"Monitor {monitor_id}: Internet is still down.")
             internet = False
             retry_count += 1
             stop_event.wait(delay)
 
     if not internet:
-        log_error(f"Monitor {monitor_id}: No internet connection after {max_retries} attempts or script complete.")
+        scan_log.error_result(_module_name, f"Monitor {monitor_id}: No internet connection after {max_retries} attempts or script complete.")
         sys.exit()
 
 
@@ -47,7 +49,7 @@ def start_monitor(max_retries=10, delay=5):
     monitor_id = str(uuid.uuid4())
     stop_event = threading.Event()
     monitor_thread = threading.Thread(
-        target=monitor_internet_connection, args=(stop_event, monitor_id, max_retries, delay)
+        target=_monitor_internet_connection, args=(stop_event, monitor_id, max_retries, delay)
     )
 
     # Store the thread and stop event in dictionaries
@@ -57,7 +59,7 @@ def start_monitor(max_retries=10, delay=5):
     # Start the monitor thread
     monitor_thread.start()
 
-    log_info(f"Started monitor with ID: {monitor_id}")
+    scan_log.info_result(_module_name, f"Started monitor with ID: {monitor_id}")
     return monitor_id
 
 
@@ -69,6 +71,6 @@ def stop_monitor(monitor_id):
         del _stop_events[monitor_id]
         del _monitor_threads[monitor_id]
 
-        log_info(f"Stopped monitor with ID: {monitor_id}")
+        scan_log.info_result(_module_name, f"Stopped monitor with ID: {monitor_id}")
     else:
-        log_warn(f"No monitor found with ID: {monitor_id}")
+        scan_log.warn_result(_module_name, f"No monitor found with ID: {monitor_id}")
