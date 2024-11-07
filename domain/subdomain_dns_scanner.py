@@ -1,6 +1,5 @@
 import json
 import dns.resolver
-import os
 import subprocess
 import requests
 import re
@@ -50,9 +49,9 @@ def find_subdomains_subfinder(domain: str) -> List[str]:
         if result.returncode == 0:
             subdomains = result.stdout.strip().splitlines()
         else:
-            scan_log.warn_status_result(_module_name, "FAILED", f"Ошибка выполнения subfinder: {result.stderr}")
+            scan_log.warn_status_result(_module_name, "FAILED", f"Subfinder execution error: {result.stderr}")
     except Exception as e:
-        scan_log.error_status_result(_module_name, "ERROR", f"Ошибка при запуске subfinder: {e}")
+        scan_log.error_status_result(_module_name, "ERROR", f"Error when starting subfinder: {e}")
     return subdomains
 
 
