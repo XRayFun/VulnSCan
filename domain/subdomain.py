@@ -7,7 +7,7 @@ from _conf import COMMON_SUBDOMAINS, BRUTEFORCE_FILE, BRUTEFORCE_LEVEL, BRUTEFOR
 from _log import scan_log
 from _utils import async_load_targets
 from domain import resolve_domain
-
+from domain.subdomain_dns_scanner import collect_subdomains
 
 _module_name = "domain.subdomain"
 
@@ -23,12 +23,12 @@ async def _load_subdomains_from_file(file_path):
     return subdomains
 
 
-async def find_subdomains(domains, level=BRUTEFORCE_LEVEL, brute_force_file=BRUTEFORCE_FILE, output_folder=BRUTEFORCE_OUTPUT_FOLDER, output_format=BRUTEFORCE_OUTPUT_FORMAT):
+async def resolve_ips_from_subdomains(domains, level=BRUTEFORCE_LEVEL, brute_force_file=BRUTEFORCE_FILE, output_folder=BRUTEFORCE_OUTPUT_FOLDER, output_format=BRUTEFORCE_OUTPUT_FORMAT):
     found_ips = set()  # To store unique IP addresses
     scan_log.info_status_result(_module_name, "STARTED", "The search for subdomains has begun")
     async def search_subdomains(current_domain, current_level, output_file):
         if current_level > 0:
-            subdomains = [f"{sub}.{current_domain}" for sub in COMMON_SUBDOMAINS]
+            subdomains = collect_subdomains(current_domain) + [f"{sub}.{current_domain}" for sub in COMMON_SUBDOMAINS]
         else:
             subdomains = [current_domain]
 
@@ -36,9 +36,16 @@ async def find_subdomains(domains, level=BRUTEFORCE_LEVEL, brute_force_file=BRUT
             additional_subdomains = await _load_subdomains_from_file(brute_force_file)
             subdomains.extend([f"{sub}.{current_domain}" for sub in additional_subdomains])
 
-        resolved_ips = await asyncio.gather(*[resolve_domain(sub) for sub in subdomains])
-        resolved_ips = list(filter(None, resolved_ips))
 
+        subdomains = list(filter(None, set(subdomains)))
+        resolved_ips = []
+
+        try:
+            resolved_ips = await asyncio.gather(*[resolve_domain(sub) for sub in subdomains])
+        except Exception as e:
+            scan_log.error_status_result(_module_name, "ERROR", f"Failed resolve_domain!\n{e}")
+
+        resolved_ips = list(filter(None, resolved_ips))
         for ip in resolved_ips:
             found_ips.add(ip)
 
@@ -60,7 +67,10 @@ async def find_subdomains(domains, level=BRUTEFORCE_LEVEL, brute_force_file=BRUT
 
     # Processing of each domain
     for domain in domains:
-        await search_subdomains(domain, 0, output_file)
+        try:
+            await search_subdomains(domain, 0, output_file)
+        except Exception as e:
+            scan_log.error_status_result(_module_name, "ERROR", f"Failed resolve_ips_from_subdomains for '{domain}'\n{e}")
 
     # Closing a file if it has been opened
     if output_file:
@@ -100,7 +110,7 @@ def main(remaining_args):
     elif args.input_file:
         _, domains = asyncio.run(async_load_targets(args.input_file))
 
-    domains = list(set(domains))
+    domains = list(filter(None, set(domains)))
 
     # Running asynchronous search for all domains
-    asyncio.run(find_subdomains(domains, args.level, args.brute_force_file, args.output_folder, args.output_format))
+    asyncio.run(resolve_ips_from_subdomains(domains, args.level, args.brute_force_file, args.output_folder, args.output_format))

@@ -7,7 +7,7 @@ import sys
 from _conf import NMAP_OUTPUT_FOLDER, NMAP_PARAMS, NMAP_ASYNC_PROCESSES, BRUTEFORCE_LEVEL, BRUTEFORCE_FILE
 from _log import scan_log
 from _utils import async_load_targets, check_internet_connection, start_monitor, stop_monitor
-from domain import find_subdomains
+from domain import resolve_ips_from_subdomains
 
 
 _module_name = "nmap.async_nmap"
@@ -61,9 +61,8 @@ async def _start_scan(args):
 
     resolved_ips = []
     domains = list(set(domains))
-    for domain in domains:
-        domain_ips = await find_subdomains(domain, args.brute_force_level, args.brute_force_file)
-        resolved_ips.extend(domain_ips)
+    domain_ips = await resolve_ips_from_subdomains(domains, args.brute_force_level, args.brute_force_file)
+    resolved_ips.extend(domain_ips)
 
     all_ips = list(set(ips + resolved_ips))
     scan_log.info_result(_module_name, f"Starts scanning to: {', '.join(all_ips)}")

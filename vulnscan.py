@@ -1,5 +1,6 @@
 import argparse
 import importlib
+import logging
 import sys
 
 from _conf import BANNER, LOG_LEVEL, LOG_FORMAT, LOG_OUTPUT_FOLDER
@@ -7,7 +8,7 @@ from _log import scan_log
 
 
 def vuln_scan():
-    print(BANNER)
+    scan_log._info(f"\n{BANNER}")
     parser = argparse.ArgumentParser(description="Vulnerability Scanner with multiple scan modes.")
     parser.add_argument('module', help="Module to execute, e.g., 'nmap', 'domain'")
     parser.add_argument('command', help="Command to execute within the module, e.g., 'async_nmap', 'subdomain")
@@ -21,9 +22,9 @@ def vuln_scan():
         sys.exit(1)
 
     scan_log._info(f"Logger setup with:"
-                   f"\n\t- Log level:  {LOG_LEVEL}"
+                   f"\n\t- Log level:  {logging.getLevelName(LOG_LEVEL)}"
                    f"\n\t- Log format: {LOG_FORMAT}"
-                   f"\n\t- Log folder: {LOG_OUTPUT_FOLDER}")
+                   f"\n\t- Log folder: {LOG_OUTPUT_FOLDER}\n")
 
     # Pass the remaining arguments to the command module
     scan_log._info(f"Starting scan with {known_args.module}.{known_args.command} module.")
