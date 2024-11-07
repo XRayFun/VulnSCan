@@ -91,7 +91,7 @@ def collect_subdomains(domain):
     if not all_subdomains:
         scan_log.warn_status_result(_module_name, "FAILED", f"No subdomains detected for '{domain}'")
     else:
-        scan_log.info_status_result(_module_name, "RESOLVED", f"From {domain} : {', '.join(all_subdomains)}")
+        scan_log.info_status_result(_module_name, "RESOLVED", f"From {domain} : {', '.join(list(all_subdomains))}")
     # Returning unique subdomains
     return list(all_subdomains)
 
