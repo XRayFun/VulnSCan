@@ -1,5 +1,5 @@
-/temp/
 /.venv/
+
 /.idea/
 /.idea/inspectionProfiles/
 /.idea/.gitignore
@@ -8,3 +8,5 @@
 /.idea/vcs.xml
 /.idea/VulnScan.iml
 /.idea/workspace.xml
+
+/__temp__/

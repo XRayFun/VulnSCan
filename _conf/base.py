@@ -15,7 +15,7 @@ BANNER = """
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-TEMP_DIR = f"{BASE_DIR}/temp/"
+TEMP_DIR = f"{BASE_DIR}/__temp__/"
 if not os.path.exists(TEMP_DIR):
     os.mkdir(TEMP_DIR)
 
