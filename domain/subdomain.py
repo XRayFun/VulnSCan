@@ -9,6 +9,7 @@ from _utils import async_load_targets, get_filtered_list
 from domain import resolve_domain
 from domain.subdomain_dns_scanner import collect_subdomains
 
+
 _module_name = "domain.subdomain"
 
 

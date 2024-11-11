@@ -8,9 +8,11 @@ LOG_OUTPUT_FOLDER = f"{TEMP_DIR}log/"
 if not os.path.exists(LOG_OUTPUT_FOLDER):
     os.mkdir(LOG_OUTPUT_FOLDER)
 
-LOG_FORMAT = "[%(asctime)-15s | %(levelname)-8s] %(message)s"
+LOG_MESSAGE_FORMAT = "[%(asctime)-15s | %(levelname)-8s] %(message)s"
 
-LOG_LEVEL = logging.INFO
+FILE_LOG_LEVEL = logging.DEBUG
+
+CONSOLE_LOG_LEVEL = logging.INFO
 
 MODULE_WIDTH = 26
 
