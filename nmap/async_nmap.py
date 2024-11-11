@@ -5,14 +5,15 @@ import argparse
 import sys
 
 from _conf import NMAP_OUTPUT_FOLDER, NMAP_PARAMS, NMAP_ASYNC_PROCESSES, BRUTEFORCE_LEVEL, BRUTEFORCE_FILE
-from _log import scan_log
-from _utils import async_load_targets, check_internet_connection, start_monitor, stop_monitor
-from domain import resolve_ips_from_subdomains
+from _log import scan_log, logger
+from _utils import async_load_targets, check_internet_connection, start_monitor, stop_monitor, get_filtered_list
+from domain import limited_resolve_ips
 
 
 _module_name = "nmap.async_nmap"
 
 
+@logger(_module_name)
 async def _scan_ip(ip, nmap_params, output_folder):
     finished_file_name = os.path.join(output_folder, f"nmap.async_finished_{ip}.xml")
     if os.path.exists(finished_file_name):
@@ -48,6 +49,7 @@ async def _scan_ip(ip, nmap_params, output_folder):
     stop_monitor(connection_monitor_id)
 
 
+@logger(_module_name)
 async def _start_scan(args):
     domains = []
     ips = []
@@ -60,17 +62,24 @@ async def _start_scan(args):
         ips, domains = await async_load_targets(args.input_file)
 
     resolved_ips = []
-    domains = list(set(filter(None, domains)))
+    domains = get_filtered_list(domains)
     if domains:
-        domain_ips = await resolve_ips_from_subdomains(domains, args.brute_force_level, args.brute_force_file)
+        domain_ips = await limited_resolve_ips(
+            domains=domains,
+            max_concurrent=args.async_processes,
+            level=args.brute_force_level,
+            brute_force_file=args.brute_force_file
+        )
         resolved_ips.extend(domain_ips)
 
-    all_ips = list(set(ips + resolved_ips))
+    all_ips = get_filtered_list(ips + resolved_ips)
     scan_log.info_result(_module_name, f"Starts scanning to: {', '.join(all_ips)}")
     tasks = [_scan_ip(ip, args.nmap_params, args.output_folder) for ip in all_ips]
 
     # Restriction on parallel processes
     semaphore = asyncio.Semaphore(args.async_processes)
+
+    @logger(_module_name)
     async def limited_task(task):
         async with semaphore:
             await task
@@ -78,6 +87,7 @@ async def _start_scan(args):
     await asyncio.gather(*(limited_task(task) for task in tasks))
 
 
+@logger(_module_name)
 def main(remaining_args):
     parser = argparse.ArgumentParser(description="Asynchronous scanning with Nmap and Subdomain Resolution.")
 

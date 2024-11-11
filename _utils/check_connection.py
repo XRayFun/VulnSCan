@@ -3,8 +3,7 @@ import sys
 import threading
 import uuid
 
-from _log import scan_log
-
+from _log import scan_log, logger
 
 _monitor_threads = {}
 _stop_events = {}
@@ -12,6 +11,7 @@ _stop_events = {}
 _module_name = "utils.check_connection"
 
 
+@logger(_module_name)
 def check_internet_connection():
     try:
         subprocess.check_call(
@@ -24,6 +24,7 @@ def check_internet_connection():
         return False
 
 
+@logger(_module_name)
 def _monitor_internet_connection(stop_event, monitor_id, max_retries=10, delay=5):
     retry_count = 0
     internet = False
@@ -45,6 +46,7 @@ def _monitor_internet_connection(stop_event, monitor_id, max_retries=10, delay=5
         sys.exit()
 
 
+@logger(_module_name)
 def start_monitor(max_retries=10, delay=5):
     monitor_id = str(uuid.uuid4())
     stop_event = threading.Event()
@@ -59,10 +61,10 @@ def start_monitor(max_retries=10, delay=5):
     # Start the monitor thread
     monitor_thread.start()
 
-    scan_log.info_result(_module_name, f"Started monitor with ID: {monitor_id}")
     return monitor_id
 
 
+@logger(_module_name)
 def stop_monitor(monitor_id):
     if monitor_id in _stop_events:
         _stop_events[monitor_id].set()  # Signal the monitor to stop
