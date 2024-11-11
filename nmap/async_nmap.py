@@ -60,9 +60,10 @@ async def _start_scan(args):
         ips, domains = await async_load_targets(args.input_file)
 
     resolved_ips = []
-    domains = list(set(domains))
-    domain_ips = await resolve_ips_from_subdomains(domains, args.brute_force_level, args.brute_force_file)
-    resolved_ips.extend(domain_ips)
+    domains = list(set(filter(None, domains)))
+    if domains:
+        domain_ips = await resolve_ips_from_subdomains(domains, args.brute_force_level, args.brute_force_file)
+        resolved_ips.extend(domain_ips)
 
     all_ips = list(set(ips + resolved_ips))
     scan_log.info_result(_module_name, f"Starts scanning to: {', '.join(all_ips)}")
