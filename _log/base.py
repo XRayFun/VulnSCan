@@ -24,3 +24,6 @@ class BaseLogger:
 
     def _error(self, message):
         self._logger.error(message)
+
+    def _debug(self, message):
+        self._logger.debug(message)
