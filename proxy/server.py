@@ -196,8 +196,6 @@ class ProxyServer:
 async def main():
     proxy = ProxyServer()
     proxy.start_background()
-    time.sleep(3)
-    await proxy.proxy_execute("cd /")
 
 
 # To start the proxy server
