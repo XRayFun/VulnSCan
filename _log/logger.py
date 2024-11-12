@@ -1,9 +1,4 @@
-import inspect
-from functools import wraps
-from logging import Logger
-
-from _log.base import BaseLogger
-from _conf import MODULE_WIDTH, IP_WIDTH, STATUS_WIDTH
+from _log.base import BaseLogger, LogLevel
 
 
 class Logger(BaseLogger):
@@ -35,63 +30,58 @@ class Logger(BaseLogger):
         - debug_ip_result(module, ip, result): Logs a debug for a result tied to a specific IP.
         - debug_status_result(module, status, result): Logs a debug for a status.
         - debug_ip_status_result(module, ip, status, result): Logs a debug for a result with both IP and status.
-
-    Attributes:
-        MODULE_WIDTH (int): Width for the module name in log output.
-        IP_WIDTH (int): Width for the IP address in log output.
-        STATUS_WIDTH (int): Width for the status field in log output.
     """
 
+    def debug_result(self, module, result):
+        self.log_result(LogLevel.DEBUG, module, result)
+
+    def debug_ip_result(self, module, ip, result):
+        self.log_result(LogLevel.DEBUG, module, result, ip)
+
+    def debug_status_result(self, module, status, result):
+        self.log_result(LogLevel.DEBUG, module, result, status=status)
+
+    def debug_ip_status_result(self, module, ip, status, result):
+        self.log_result(LogLevel.DEBUG, module, result, ip, status)
+
+
     def info_result(self, module, result):
-        self._info(f"{module:<{MODULE_WIDTH+IP_WIDTH+STATUS_WIDTH}}{result}")
+        self.log_result(LogLevel.INFO, module, result)
 
     def info_ip_result(self, module, ip, result):
-        self._info(f"{module:<{MODULE_WIDTH}}{ip:<{IP_WIDTH+STATUS_WIDTH}}{result}")
+        self.log_result(LogLevel.INFO, module, result, ip)
 
     def info_status_result(self, module, status, result):
-        self._info(f"{module:<{MODULE_WIDTH+IP_WIDTH}}{status:<{STATUS_WIDTH}}{result}")
+        self.log_result(LogLevel.INFO, module, result, status=status)
 
     def info_ip_status_result(self, module, ip, status, result):
-        self._info(f"{module:<{MODULE_WIDTH}}{ip:<{IP_WIDTH}}{status:<{STATUS_WIDTH}}{result}")
+        self.log_result(LogLevel.INFO, module, result, ip, status)
 
 
     def warn_result(self, module, result):
-        self._warn(f"{module:<{MODULE_WIDTH+IP_WIDTH+STATUS_WIDTH}}{result}")
+        self.log_result(LogLevel.WARN, module, result)
 
     def warn_ip_result(self, module, ip, result):
-        self._warn(f"{module:<{MODULE_WIDTH}}{ip:<{IP_WIDTH+STATUS_WIDTH}}{result}")
+        self.log_result(LogLevel.WARN, module, result, ip)
 
     def warn_status_result(self, module, status, result):
-        self._warn(f"{module:<{MODULE_WIDTH+IP_WIDTH}}{status:<{STATUS_WIDTH}}{result}")
+        self.log_result(LogLevel.WARN, module, result, status=status)
 
     def warn_ip_status_result(self, module, ip, status, result):
-        self._warn(f"{module:<{MODULE_WIDTH}}\t{ip:<{IP_WIDTH}}\t\t{status:<{STATUS_WIDTH}}\t\t{result}")
+        self.log_result(LogLevel.WARN, module, result, ip, status)
 
 
     def error_result(self, module, result):
-        self._error(f"{module:<{MODULE_WIDTH+IP_WIDTH+STATUS_WIDTH}}\n\t{result}")
+        self.log_result(LogLevel.ERROR, module, result)
 
     def error_ip_result(self, module, ip, result):
-        self._error(f"{module:<{MODULE_WIDTH}}{ip:<{IP_WIDTH+STATUS_WIDTH}}\n\t{result}")
+        self.log_result(LogLevel.ERROR, module, result, ip)
 
     def error_status_result(self, module, status, result):
-        self._error(f"{module:<{MODULE_WIDTH+IP_WIDTH}}{status:<{STATUS_WIDTH}}\n\t{result}")
+        self.log_result(LogLevel.ERROR, module, result, status=status)
 
     def error_ip_status_result(self, module, ip, status, result):
-        self._error(f"{module:<{MODULE_WIDTH}}{ip:<{IP_WIDTH}}{status:<{STATUS_WIDTH}}\n\t{result}")
-
-
-    def debug_result(self, module, result):
-        self._debug(f"{module:<{MODULE_WIDTH+IP_WIDTH+STATUS_WIDTH}}\t{result}")
-
-    def debug_ip_result(self, module, ip, result):
-        self._debug(f"{module:<{MODULE_WIDTH}}{ip:<{IP_WIDTH+STATUS_WIDTH}}{result}")
-
-    def debug_status_result(self, module, status, result):
-        self._debug(f"{module:<{MODULE_WIDTH+IP_WIDTH}}{status:<{STATUS_WIDTH}}{result}")
-
-    def debug_ip_status_result(self, module, ip, status, result):
-        self._debug(f"{module:<{MODULE_WIDTH}}\t{ip:<{IP_WIDTH}}\t\t{status:<{STATUS_WIDTH}}\t\t{result}")
+        self.log_result(LogLevel.ERROR, module, result, ip, status)
 
 
 scan_log = Logger()

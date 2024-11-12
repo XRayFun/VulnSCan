@@ -1,7 +1,30 @@
 from datetime import datetime
 import logging
+from enum import Enum
 
-from _conf import LOG_MESSAGE_FORMAT, FILE_LOG_LEVEL, CONSOLE_LOG_LEVEL, LOG_OUTPUT_FOLDER
+from _conf import LOG_MESSAGE_FORMAT, FILE_LOG_LEVEL, CONSOLE_LOG_LEVEL, LOG_OUTPUT_FOLDER, MODULE_WIDTH, IP_WIDTH, STATUS_WIDTH
+
+
+class LogLevel(Enum):
+    NOTSET = logging.NOTSET
+    DEBUG = logging.DEBUG
+    INFO = logging.INFO
+    WARN = logging.WARN
+    ERROR = logging.ERROR
+
+
+def _format_message(module, result, ip=None, status=None):
+    """
+    Formats the log message based on provided data.
+    """
+    if ip and status:
+        return f"{module:<{MODULE_WIDTH}}{ip:<{IP_WIDTH}}{status:<{STATUS_WIDTH}}{result}"
+    elif ip:
+        return f"{module:<{MODULE_WIDTH}}{ip:<{IP_WIDTH + STATUS_WIDTH}}{result}"
+    elif status:
+        return f"{module:<{MODULE_WIDTH + IP_WIDTH}}{status:<{STATUS_WIDTH}}{result}"
+    else:
+        return f"{module:<{MODULE_WIDTH + IP_WIDTH + STATUS_WIDTH}}{result}"
 
 
 class BaseLogger:
@@ -24,6 +47,24 @@ class BaseLogger:
     _logger.addHandler(_file_log)
     _logger.addHandler(_console_out)
 
+    # Additional loggers
+    logging.getLogger("paramiko").setLevel(logging.WARNING)
+
+
+    def log_result(self, level:LogLevel, module:str, result:str, ip=None, status=None):
+        """
+        Logs a message at the specified log level with a structured format.
+        """
+        log_message = _format_message(module, result, ip, status)
+        self._logger.log(level.value if level else LogLevel.NOTSET, log_message)
+
+    def log(self, level:LogLevel, message):
+        self._logger.log(level.value if level else LogLevel.NOTSET, message)
+
+
+    def _debug(self, message):
+        self._logger.debug(message)
+
     def _info(self, message):
         self._logger.info(message)
 
@@ -32,8 +73,3 @@ class BaseLogger:
 
     def _error(self, message):
         self._logger.error(message)
-
-    def _debug(self, message):
-        self._logger.debug(message)
-
-    logging.getLogger("paramiko").setLevel(logging.WARNING)

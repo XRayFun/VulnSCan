@@ -1,6 +1,7 @@
 import asyncio
 import threading
 import time
+from asyncio import StreamReader, StreamWriter
 
 import paramiko
 import random
@@ -8,15 +9,15 @@ import json
 import os
 
 from _conf import PROXY_LOCAL_HOST, PROXY_LOCAL_PORT, PROXY_EXTERNAL_SERVERS_FILE
-from _log import logger, scan_log
-
+from _log import logger, scan_log, LogLevel
 
 _module_name = "proxy.server"
 _executor_name = "proxy.executor"
 
 
 class ProxyServer:
-    def __init__(self, host=PROXY_LOCAL_HOST, port=PROXY_LOCAL_PORT, config_file=PROXY_EXTERNAL_SERVERS_FILE):
+    @logger(_module_name)
+    def __init__(self, host:str=PROXY_LOCAL_HOST, port:int=PROXY_LOCAL_PORT, config_file:str=PROXY_EXTERNAL_SERVERS_FILE):
         """
         Initializes the SOCKS5 proxy server.
         :param host: The host where the proxy server will listen for incoming connections.
@@ -41,6 +42,7 @@ class ProxyServer:
         self.server_thread.start()
         scan_log.info_status_result(_module_name, "RUN", "SOCKS5 Proxy Server is starting in the background.")
 
+    @logger(_module_name)
     def _run_server_loop(self):
         """
         Runs the server event loop in a new thread.
@@ -72,7 +74,7 @@ class ProxyServer:
             self.server_thread.join()  # Wait for the thread to finish
 
     @logger(_module_name)
-    def _load_external_servers(self, config_file):
+    def _load_external_servers(self, config_file:str):
         """
         Loads the external servers from the given JSON configuration file.
         :param config_file: Path to the JSON configuration file.
@@ -89,7 +91,7 @@ class ProxyServer:
             return servers
 
     @logger(_module_name)
-    async def _handle_client(self, client_reader, client_writer):
+    async def _handle_client(self, client_reader:StreamReader, client_writer:StreamWriter):
         """
         Handles a client connection to the proxy server asynchronously.
         :param client_reader: The asyncio StreamReader object representing the client connection.
@@ -121,29 +123,34 @@ class ProxyServer:
             client_writer.write(result.encode())
             await client_writer.drain()
         except Exception as e:
-                scan_log.error_status_result(_executor_name, "FAILED", f"Handling client command: {e}")
+            scan_log.error_status_result(_executor_name, "FAILED", f"Handling client command: {e}")
         finally:
             client_writer.close()
             await client_writer.wait_closed()
 
+    @staticmethod
+    def executor_log(log_type:LogLevel, server_info:dict, status:str, message:str):
+        ip = f"{server_info['host']}:{server_info['port']}" if server_info else ""
+        scan_log.log_result(log_type, _executor_name, message, ip, status)
+
     @logger(_module_name)
-    async def proxy_execute(self, command):
+    async def proxy_execute(self, command:str):
         """
         Executes a command on a remote server chosen from the configured external servers.
         :param command: Command to execute on the remote server.
         :return: Result of the command execution.
         """
-        scan_log.info_status_result(_executor_name, "START", "Local command execution")
+        self.executor_log(LogLevel.INFO, {}, "START", "Local command execution")
         # Check if external servers are available
         if not self._external_servers:
-            scan_log.error_status_result(_executor_name, "ERROR", "No external servers found.")
+            self.executor_log(LogLevel.ERROR, {}, "ERROR", "No external servers found.")
             return None
 
         # Execute the command and return the result by random server
         return await self._execute_remote_command(random.choice(self._external_servers), command)
 
     @logger(_module_name)
-    async def _execute_remote_command(self, server_info, command):
+    async def _execute_remote_command(self, server_info:dict, command:str):
         """
         Executes a command on a remote server over SSH and returns the output.
         :param server_info: Dictionary containing 'host', 'port', 'user', and 'password' of the server.
@@ -156,30 +163,32 @@ class ProxyServer:
             ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
             # Подключаемся к серверу
-            scan_log.info_ip_status_result(_executor_name, f"{server_info['host']}:{server_info['port']}", "CONNECTION", "Try to connect for command execution.")
+            self.executor_log(LogLevel.INFO, server_info, "CONNECTION", "Try to connect for command execution.")
             ssh_client.connect(
                 hostname=server_info['host'],
                 port=server_info['port'],
                 username=server_info['user'],
                 password=server_info['password']
             )
-            scan_log.info_ip_status_result(_executor_name, f"{server_info['host']}:{server_info['port']}", "SUCCESS", "Connection established.")
+            self.executor_log(LogLevel.INFO, server_info, "SUCCESS", "Connection established.")
 
             # Выполняем команду и получаем результат
             stdin, stdout, stderr = ssh_client.exec_command(command)
             output = stdout.read().decode()
             error = stderr.read().decode()
             ssh_client.close()
-            scan_log.info_ip_status_result(_executor_name, f"{server_info['host']}:{server_info['port']}", "COMPLETE", "The command call has been successful. Connection closed.")
+            self.executor_log(LogLevel.INFO, server_info, "COMPLETE", "The command call has been successful. Connection closed.")
 
             # Возвращаем либо результат выполнения, либо ошибку
             if output:
-                scan_log.info_ip_status_result(_executor_name, f"{server_info['host']}:{server_info['port']}", "RESULT", f"Command feedback:\n{output}")
+                self.executor_log(LogLevel.INFO, server_info, "RESULT", f"Command feedback:\n{output}")
+            elif error:
+                self.executor_log(LogLevel.ERROR, server_info, "FAILED", f"Command feedback:\n{error}")
             else:
-                scan_log.error_ip_status_result(_executor_name, f"{server_info['host']}:{server_info['port']}", "FAILED", f"Command feedback:\n{error}")
+                self.executor_log(LogLevel.INFO, server_info, "RESULT", f"Command feedback is blank.")
             return output if output else error
         except Exception as e:
-            scan_log.error_status_result(_executor_name, "ERROR", f"Remote command execution failed: {e}")
+            self.executor_log(LogLevel.ERROR, server_info, "ERROR", f"Remote command execution failed: {e}")
             return None
 
 
@@ -187,7 +196,7 @@ async def main():
     proxy = ProxyServer()
     proxy.start_background()
     time.sleep(3)
-    await proxy.proxy_execute("ls -la /home")
+    await proxy.proxy_execute("cd /")
 
 
 # To start the proxy server
