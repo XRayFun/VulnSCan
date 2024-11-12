@@ -35,3 +35,5 @@ class BaseLogger:
 
     def _debug(self, message):
         self._logger.debug(message)
+
+    logging.getLogger("paramiko").setLevel(logging.WARNING)
