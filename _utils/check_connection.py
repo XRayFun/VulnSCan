@@ -3,7 +3,7 @@ import sys
 import threading
 import uuid
 
-from _log import scan_log, logger
+from _log import vsc_log, logger
 
 _monitor_threads = {}
 _stop_events = {}
@@ -25,7 +25,7 @@ def check_internet_connection():
 
 
 @logger(_module_name)
-def _monitor_internet_connection(stop_event, monitor_id, max_retries=10, delay=5):
+def _monitor_internet_connection(stop_event:threading.Event, monitor_id:uuid.UUID, max_retries:int=10, delay:int=5):
     retry_count = 0
     internet = False
 
@@ -36,19 +36,19 @@ def _monitor_internet_connection(stop_event, monitor_id, max_retries=10, delay=5
             stop_event.wait(delay)
         else:
             if retry_count % 2 == 0:
-                scan_log.warn_result(_module_name, f"Monitor {monitor_id}: Internet is still down.")
+                vsc_log.warn_result(_module_name, f"Monitor {str(monitor_id)}: Internet is still down.")
             internet = False
             retry_count += 1
             stop_event.wait(delay)
 
     if not internet:
-        scan_log.error_result(_module_name, f"Monitor {monitor_id}: No internet connection after {max_retries} attempts or script complete.")
+        vsc_log.error_result(_module_name, f"Monitor {str(monitor_id)}: No internet connection after {max_retries} attempts or script complete.")
         sys.exit()
 
 
 @logger(_module_name)
-def start_monitor(max_retries=10, delay=5):
-    monitor_id = str(uuid.uuid4())
+def start_monitor(max_retries:int=10, delay:int=5) -> uuid.UUID:
+    monitor_id = uuid.uuid4()
     stop_event = threading.Event()
     monitor_thread = threading.Thread(
         target=_monitor_internet_connection, args=(stop_event, monitor_id, max_retries, delay)
@@ -60,12 +60,13 @@ def start_monitor(max_retries=10, delay=5):
 
     # Start the monitor thread
     monitor_thread.start()
+    vsc_log.info_status_result(_module_name, "START", f"Monitor of connection with ID: {monitor_id}")
 
     return monitor_id
 
 
 @logger(_module_name)
-def stop_monitor(monitor_id):
+def stop_monitor(monitor_id:uuid.UUID):
     if monitor_id in _stop_events:
         _stop_events[monitor_id].set()  # Signal the monitor to stop
         _monitor_threads[monitor_id].join()  # Wait for the monitor to finish
@@ -73,6 +74,6 @@ def stop_monitor(monitor_id):
         del _stop_events[monitor_id]
         del _monitor_threads[monitor_id]
 
-        scan_log.info_result(_module_name, f"Stopped monitor with ID: {monitor_id}")
+        vsc_log.info_status_result(_module_name, "STOP", f"Monitor of connection with ID: {monitor_id}")
     else:
-        scan_log.warn_result(_module_name, f"No monitor found with ID: {monitor_id}")
+        vsc_log.warn_status_result(_module_name, "FAILED", f"No monitor of connection found with ID: {monitor_id}")

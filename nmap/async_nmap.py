@@ -5,7 +5,7 @@ import argparse
 import sys
 
 from _conf import NMAP_OUTPUT_FOLDER, NMAP_PARAMS, NMAP_ASYNC_PROCESSES, BRUTEFORCE_LEVEL, BRUTEFORCE_FILE
-from _log import scan_log, logger
+from _log import vsc_log, logger
 from _utils import async_load_targets, check_internet_connection, start_monitor, stop_monitor, get_filtered_list
 from domain import limited_resolve_ips
 
@@ -14,19 +14,19 @@ _module_name = "nmap.async_nmap"
 
 
 @logger(_module_name)
-async def _scan_ip(ip, nmap_params, output_folder):
+async def _scan_ip(ip:str, nmap_params:str, output_folder:str):
     finished_file_name = os.path.join(output_folder, f"nmap.async_finished_{ip}.xml")
     if os.path.exists(finished_file_name):
-        scan_log.info_ip_status_result(_module_name, ip, "SKIPPED", f"The '{finished_file_name}' file already exists.")
+        vsc_log.info_ip_status_result(_module_name, ip, "SKIPPED", f"The '{finished_file_name}' file already exists.")
         return
 
     connection_monitor_id = start_monitor()
 
     output_file = os.path.join(output_folder, f"nmap.async_{ip}.xml")
     if os.path.exists(output_file):
-        scan_log.info_result(_module_name, f"The '{output_file}' file already exists. It will be overwritten.")
+        vsc_log.info_result(_module_name, f"The '{output_file}' file already exists. It will be overwritten.")
 
-    scan_log.info_ip_status_result(_module_name, ip, "SCANNING", f"Starts!")
+    vsc_log.info_ip_status_result(_module_name, ip, "SCANNING", f"Starts!")
 
     try:
         process = await asyncio.create_subprocess_exec(
@@ -36,15 +36,15 @@ async def _scan_ip(ip, nmap_params, output_folder):
         )
         stdout, stderr = await process.communicate()
 
-        scan_log.info_ip_status_result(_module_name, ip, "FINISHED", f"\n{stdout.decode()}")
+        vsc_log.info_ip_status_result(_module_name, ip, "FINISHED", f"\n{stdout.decode()}")
         if stderr:
-            scan_log.warn_ip_result(_module_name, ip, f"Error when scanning:\n{stderr.decode()}")
+            vsc_log.warn_ip_result(_module_name, ip, f"Error when scanning:\n{stderr.decode()}")
 
-        scan_log.info_result(_module_name, f"File renamed from {output_file} to {finished_file_name}")
+        vsc_log.info_result(_module_name, f"File renamed from {output_file} to {finished_file_name}")
         os.rename(output_file, finished_file_name)
 
     except Exception as e:
-        scan_log.error_ip_result(_module_name, ip, f"Error when scanning:\n{e}")
+        vsc_log.error_ip_result(_module_name, ip, f"Error when scanning:\n{e}")
 
     stop_monitor(connection_monitor_id)
 
@@ -73,7 +73,7 @@ async def _start_scan(args):
         resolved_ips.extend(domain_ips)
 
     all_ips = get_filtered_list(ips + resolved_ips)
-    scan_log.info_result(_module_name, f"Starts scanning to: {', '.join(all_ips)}")
+    vsc_log.info_result(_module_name, f"Starts scanning to: {', '.join(all_ips)}")
     tasks = [_scan_ip(ip, args.nmap_params, args.output_folder) for ip in all_ips]
 
     # Restriction on parallel processes
@@ -111,7 +111,7 @@ def main(remaining_args):
     args = parser.parse_args(remaining_args)
 
     if not check_internet_connection():
-        scan_log.error_result(_module_name, "Unable to execute script, no internet connection!")
+        vsc_log.error_result(_module_name, "Unable to execute script, no internet connection!")
         sys.exit(1)
 
     # Start scanning

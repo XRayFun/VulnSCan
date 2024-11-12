@@ -9,7 +9,8 @@ import json
 import os
 
 from _conf import PROXY_LOCAL_HOST, PROXY_LOCAL_PORT, PROXY_EXTERNAL_SERVERS_FILE
-from _log import logger, scan_log, LogLevel
+from _log import logger, vsc_log, LogLevel
+
 
 _module_name = "proxy.server"
 _executor_name = "proxy.executor"
@@ -40,7 +41,7 @@ class ProxyServer:
         # Create and start a new thread to run the server
         self.server_thread = threading.Thread(target=self._run_server_loop)
         self.server_thread.start()
-        scan_log.info_status_result(_module_name, "RUN", "SOCKS5 Proxy Server is starting in the background.")
+        vsc_log.info_status_result(_module_name, "START", "SOCKS5 Proxy Server is starting in the background.")
 
     @logger(_module_name)
     def _run_server_loop(self):
@@ -57,7 +58,7 @@ class ProxyServer:
         Starts the proxy server asynchronously.
         """
         self.server = await asyncio.start_server(self._handle_client, self._host, self._port)
-        scan_log.info_status_result(_module_name, "SUCCESS", f"SOCKS5 Proxy Server started on {self._host}:{self._port}")
+        vsc_log.info_status_result(_module_name, "SUCCESS", f"SOCKS5 Proxy Server started on {self._host}:{self._port}")
         async with self.server:
             await self.server.serve_forever()
 
@@ -68,7 +69,7 @@ class ProxyServer:
         """
         if self.server_task:
             self.server_task.cancel()
-            scan_log.info_status_result(_module_name, "STOPPED", "Proxy server stopped.")
+            vsc_log.info_status_result(_module_name, "STOP", "Proxy server stopped.")
         if self.server:
             self.loop.call_soon_threadsafe(self.loop.stop)  # Stop the event loop
             self.server_thread.join()  # Wait for the thread to finish
@@ -81,13 +82,13 @@ class ProxyServer:
         :return: List of external server dictionaries with 'host', 'port', 'user', and 'password'.
         """
         if not os.path.exists(config_file):
-            scan_log.error_status_result(_module_name, "ERROR", f"Configuration file '{config_file}' not found.")
+            vsc_log.error_status_result(_module_name, "ERROR", f"Configuration file '{config_file}' not found.")
             return []
 
         with open(config_file, 'r') as file:
             data = json.load(file)
             servers = data.get("servers", [])
-            scan_log.info_status_result(_module_name, "SUCCESS", f"Loaded {len(servers)} external servers from '{config_file}'")
+            vsc_log.info_status_result(_module_name, "SUCCESS", f"Loaded {len(servers)} external servers from '{config_file}'")
             return servers
 
     @logger(_module_name)
@@ -104,14 +105,14 @@ class ProxyServer:
 
             # Проверяем, что команда не пустая
             if not command:
-                scan_log.error_status_result(_executor_name, "ERROR", "Empty command received.")
+                vsc_log.error_status_result(_executor_name, "ERROR", "Empty command received.")
                 client_writer.close()
                 await client_writer.wait_closed()
                 return
 
             # Выбираем случайный сервер из списка для выполнения команды
             if not self._external_servers:
-                scan_log.error_status_result(_executor_name, "ERROR", "No external servers found. Ensure the config file is correct.")
+                vsc_log.error_status_result(_executor_name, "ERROR", "No external servers found. Ensure the config file is correct.")
                 client_writer.close()
                 await client_writer.wait_closed()
                 return
@@ -123,7 +124,7 @@ class ProxyServer:
             client_writer.write(result.encode())
             await client_writer.drain()
         except Exception as e:
-            scan_log.error_status_result(_executor_name, "FAILED", f"Handling client command: {e}")
+            vsc_log.error_status_result(_executor_name, "FAILED", f"Handling client command: {e}")
         finally:
             client_writer.close()
             await client_writer.wait_closed()
@@ -131,7 +132,7 @@ class ProxyServer:
     @staticmethod
     def executor_log(log_type:LogLevel, server_info:dict, status:str, message:str):
         ip = f"{server_info['host']}:{server_info['port']}" if server_info else ""
-        scan_log.log_result(log_type, _executor_name, message, ip, status)
+        vsc_log.log_result(log_type, _executor_name, message, ip, status)
 
     @logger(_module_name)
     async def proxy_execute(self, command:str):
@@ -157,7 +158,7 @@ class ProxyServer:
         :param command: The command to execute.
         :return: Output from the remote command execution.
         """
-        scan_log.info_status_result(_executor_name, "EXECUTE", f"Command: '{command}'")
+        vsc_log.info_status_result(_executor_name, "EXECUTE", f"Command: '{command}'")
         try:
             ssh_client = paramiko.SSHClient()
             ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())

@@ -1,11 +1,13 @@
 import argparse
 import asyncio
 from datetime import datetime
+from typing import List, Tuple, Any
+
 import aiofiles
 
 from _conf import COMMON_SUBDOMAINS, BRUTEFORCE_FILE, BRUTEFORCE_LEVEL, BRUTEFORCE_OUTPUT_FOLDER, BRUTEFORCE_OUTPUT_FORMAT, BRUTEFORCE_ASYNC_PROCESSES
-from _log import scan_log, logger
-from _utils import async_load_targets, get_filtered_list
+from _log import vsc_log, logger
+from _utils import async_load_targets, get_filtered_list, start_monitor, stop_monitor
 from domain import resolve_domain
 from domain.subdomain_dns_scanner import collect_subdomains
 
@@ -14,39 +16,39 @@ _module_name = "domain.subdomain"
 
 
 @logger(_module_name)
-async def limited_resolve_ips(domains, max_concurrent=BRUTEFORCE_ASYNC_PROCESSES, output_folder=BRUTEFORCE_OUTPUT_FOLDER, **kwargs):
+async def limited_resolve_ips(domains:list, max_concurrent:int=BRUTEFORCE_ASYNC_PROCESSES, output_folder:str=BRUTEFORCE_OUTPUT_FOLDER, **kwargs) -> tuple[Any]:
     semaphore = asyncio.Semaphore(max_concurrent)
 
     output_file_path = f"{output_folder}domain.subdomain {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.txt" if output_folder else None
     output_file = await aiofiles.open(output_file_path, mode='w') if output_file_path else None
 
     @logger(_module_name)
-    async def resolve_with_limit(domain):
+    async def resolve_with_limit(domain:str) -> List[str]:
         async with semaphore:
             try:
                 return await resolve_ips(domain, output_file, **kwargs)
             except Exception as e:
-                scan_log.error_status_result(_module_name, "ERROR", f"Error resolving domain '{domain}': {e}")
+                vsc_log.error_status_result(_module_name, "ERROR", f"Error resolving domain '{domain}': {e}")
                 return []
 
-    scan_log.info_status_result(_module_name, "STARTED", "The search for subdomains has begun")
+    vsc_log.info_status_result(_module_name, "STARTED", "The search for subdomains has begun")
     tasks = [resolve_with_limit(domain) for domain in domains]
     results = await asyncio.gather(*tasks)
 
     # Closing a file if it has been opened
     if output_file:
         await output_file.close()
-        scan_log.info_status_result(_module_name, "COMPLETE", f"Results saved to '{output_file_path}' file")
+        vsc_log.info_status_result(_module_name, "COMPLETE", f"Results saved to '{output_file_path}' file")
 
     return results
 
 
 @logger(_module_name)
-async def resolve_ips(domain:str, output_file, level=BRUTEFORCE_LEVEL, brute_force_file=BRUTEFORCE_FILE, output_format=BRUTEFORCE_OUTPUT_FORMAT):
+async def resolve_ips(domain:str, output_file:aiofiles, level:int=BRUTEFORCE_LEVEL, brute_force_file:str=BRUTEFORCE_FILE, output_format:str=BRUTEFORCE_OUTPUT_FORMAT) -> List[str]:
     found_ips = set()  # To store unique IP addresses
 
     @logger(_module_name)
-    async def search_subdomains(current_domain, current_level, output_file):
+    async def search_subdomains(current_domain:str, current_level:int):
         if current_level > 0:
             subdomains = collect_subdomains(current_domain) + [f"{sub}.{current_domain}" for sub in COMMON_SUBDOMAINS]
         else:
@@ -63,7 +65,7 @@ async def resolve_ips(domain:str, output_file, level=BRUTEFORCE_LEVEL, brute_for
         try:
             resolved_ips = await asyncio.gather(*[resolve_domain(sub) for sub in subdomains])
         except Exception as exe:
-            scan_log.error_status_result(_module_name, "ERROR", f"Failed resolve_domain!\n{exe}")
+            vsc_log.error_status_result(_module_name, "ERROR", f"Failed resolve_domain!\n{exe}")
 
         resolved_ips = get_filtered_list(resolved_ips)
         for ip in resolved_ips:
@@ -78,36 +80,28 @@ async def resolve_ips(domain:str, output_file, level=BRUTEFORCE_LEVEL, brute_for
                     await output_file.write(f"{', '.join(resolved_ips)}\n")
 
         if current_level < level:
-            tasks = [search_subdomains(sub, current_level + 1, output_file) for sub in subdomains]
+            tasks = [search_subdomains(sub, current_level + 1) for sub in subdomains]
             await asyncio.gather(*tasks)
 
     # Processing of each domain
     try:
-        await search_subdomains(domain, 0, output_file)
+        await search_subdomains(domain, 0)
     except Exception as e:
-        scan_log.error_status_result(_module_name, "ERROR", f"Failed resolve_ips_from_subdomains for '{domain}'\n{e}")
+        vsc_log.error_status_result(_module_name, "ERROR", f"Failed resolve_ips_from_subdomains for '{domain}'\n{e}")
 
     return get_filtered_list(found_ips)  # Return found IP addresses
 
 
 @logger(_module_name)
-async def _load_domains_from_file(file_path):
-    async with aiofiles.open(file_path, mode='r') as f:
-        content = await f.read()
-        domains = [domain.strip() for domain in content.split(',') if domain.strip()]
-    scan_log.info_status_result(_module_name, "LOADED", f"{len(domains)} domains from '{file_path}'")
-    return domains
-
-
-@logger(_module_name)
-async def _load_subdomains_from_file(file_path):
+async def _load_subdomains_from_file(file_path:str) -> List[str]:
     subdomains = []
     async with aiofiles.open(file_path, mode='r') as f:
         async for line in f:
             subdomain = line.strip()
             if subdomain and not subdomain.startswith('#'):
                 subdomains.append(subdomain)
-    scan_log.info_status_result(_module_name, "LOADED", f"{len(subdomains)} subdomains from '{file_path}'")
+    subdomains = get_filtered_list(subdomains)
+    vsc_log.info_status_result(_module_name, "LOADED", f"{len(subdomains)} subdomains from '{file_path}'")
     return subdomains
 
 
@@ -137,7 +131,7 @@ def main(remaining_args):
         _, domains = asyncio.run(async_load_targets(args.input_file))
 
     domains = get_filtered_list(domains)
-
+    monitor_id = start_monitor()
     # Running asynchronous search for all domains
     asyncio.run(limited_resolve_ips(
         domains=domains,
@@ -147,3 +141,4 @@ def main(remaining_args):
         output_folder=args.output_folder,
         output_format=args.output_format
     ))
+    stop_monitor(monitor_id)

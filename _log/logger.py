@@ -1,3 +1,7 @@
+from logging import Logger, WARNING
+
+from cryptography.utils import deprecated
+
 from _log.base import BaseLogger, LogLevel
 
 
@@ -84,4 +88,4 @@ class Logger(BaseLogger):
         self.log_result(LogLevel.ERROR, module, result, ip, status)
 
 
-scan_log = Logger()
+vsc_log = Logger()
