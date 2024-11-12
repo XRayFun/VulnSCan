@@ -14,14 +14,17 @@ _module_name = "domain.subdomain"
 
 
 @logger(_module_name)
-async def limited_resolve_ips(domains, max_concurrent=BRUTEFORCE_ASYNC_PROCESSES, **kwargs):
+async def limited_resolve_ips(domains, max_concurrent=BRUTEFORCE_ASYNC_PROCESSES, output_folder=BRUTEFORCE_OUTPUT_FOLDER, **kwargs):
     semaphore = asyncio.Semaphore(max_concurrent)
+
+    output_file_path = f"{output_folder}domain.subdomain {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.txt" if output_folder else None
+    output_file = await aiofiles.open(output_file_path, mode='w') if output_file_path else None
 
     @logger(_module_name)
     async def resolve_with_limit(domain):
         async with semaphore:
             try:
-                return await resolve_ips(domain, **kwargs)
+                return await resolve_ips(domain, output_file, **kwargs)
             except Exception as e:
                 scan_log.error_status_result(_module_name, "ERROR", f"Error resolving domain '{domain}': {e}")
                 return []
@@ -29,11 +32,17 @@ async def limited_resolve_ips(domains, max_concurrent=BRUTEFORCE_ASYNC_PROCESSES
     scan_log.info_status_result(_module_name, "STARTED", "The search for subdomains has begun")
     tasks = [resolve_with_limit(domain) for domain in domains]
     results = await asyncio.gather(*tasks)
+
+    # Closing a file if it has been opened
+    if output_file:
+        await output_file.close()
+        scan_log.info_status_result(_module_name, "COMPLETE", f"Results saved to '{output_file_path}' file")
+
     return results
 
 
 @logger(_module_name)
-async def resolve_ips(domain:str, level=BRUTEFORCE_LEVEL, brute_force_file=BRUTEFORCE_FILE, output_folder=BRUTEFORCE_OUTPUT_FOLDER, output_format=BRUTEFORCE_OUTPUT_FORMAT):
+async def resolve_ips(domain:str, output_file, level=BRUTEFORCE_LEVEL, brute_force_file=BRUTEFORCE_FILE, output_format=BRUTEFORCE_OUTPUT_FORMAT):
     found_ips = set()  # To store unique IP addresses
 
     @logger(_module_name)
@@ -72,20 +81,11 @@ async def resolve_ips(domain:str, level=BRUTEFORCE_LEVEL, brute_force_file=BRUTE
             tasks = [search_subdomains(sub, current_level + 1, output_file) for sub in subdomains]
             await asyncio.gather(*tasks)
 
-    # Opening a file for writing
-    output_file_path = f"{output_folder}domain.subdomain results {datetime.now()}.txt" if output_folder else None
-    output_file = await aiofiles.open(output_file_path, mode='w') if output_file_path else None
-
     # Processing of each domain
     try:
         await search_subdomains(domain, 0, output_file)
     except Exception as e:
         scan_log.error_status_result(_module_name, "ERROR", f"Failed resolve_ips_from_subdomains for '{domain}'\n{e}")
-
-    # Closing a file if it has been opened
-    if output_file:
-        await output_file.close()
-        scan_log.info_status_result(_module_name, "COMPLETE", f"Results saved to '{output_file_path}' file")
 
     return get_filtered_list(found_ips)  # Return found IP addresses
 
