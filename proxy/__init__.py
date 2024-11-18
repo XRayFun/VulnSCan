@@ -1,4 +1,1 @@
-from .server import ProxyServer
-
-
-proxy = ProxyServer()
+from .old_remote import LocalServer, RemoteServer
