@@ -1,11 +1,9 @@
 import argparse
 import importlib
 import logging
-import time
 
 from _conf import BANNER, FILE_LOG_LEVEL, CONSOLE_LOG_LEVEL, LOG_MESSAGE_FORMAT, LOG_OUTPUT_FOLDER
 from _log import vsc_log, LogLevel
-from proxy import proxy
 
 
 def vuln_scan():
@@ -31,14 +29,10 @@ def vuln_scan():
                    f"\n\t- Log format: {LOG_MESSAGE_FORMAT}"
                    f"\n\t- Log folder: {LOG_OUTPUT_FOLDER}\n")
 
-    proxy.start_background()
-    time.sleep(3)
-
     # Pass the remaining arguments to the command module
     vsc_log.log(LogLevel.INFO, f"Starting scan with {known_args.module}.{known_args.command} module.")
     command_module.main(remaining_args)
 
-    proxy.stop_server()
     return 0
 
 

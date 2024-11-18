@@ -73,7 +73,10 @@ async def _start_scan(args):
         resolved_ips.extend(domain_ips)
 
     all_ips = get_filtered_list(ips + resolved_ips)
-    vsc_log.info_result(_module_name, f"Starts scanning to: {', '.join(all_ips)}")
+    if all_ips:
+        vsc_log.info_result(_module_name, f"Starts scanning to: {', '.join(all_ips)}")
+    else:
+        vsc_log.info_result(_module_name, f"Not found IPs!")
     tasks = [_scan_ip(ip, args.nmap_params, args.output_folder) for ip in all_ips]
 
     # Restriction on parallel processes
@@ -92,9 +95,9 @@ def main(remaining_args):
     parser = argparse.ArgumentParser(description="Asynchronous scanning with Nmap and Subdomain Resolution.")
 
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-iF', '--input-file',
+    group.add_argument('-iF', '--input-file', type=str,
                         help="Path to the IP addresses or domains included file")
-    group.add_argument('-ips', '--ip-addresses',
+    group.add_argument('-ips', '--ip-addresses', type=str,
                         help="List of IP addresses or domains, comma separated (no spaces), to be checked")
 
     parser.add_argument('-oF', '--output-folder', default=NMAP_OUTPUT_FOLDER,

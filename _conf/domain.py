@@ -69,7 +69,7 @@ COMMON_SUBDOMAINS = [
     "policy3", "log-collector", "log-server", "logstash", "elastic", "kibana", "grafana", "dashboard",
 
     # Alphabetic and numeric variations of popular subdomains
-    *[f'node - {i}' for i in range(1, 1001)],  # Numbered subdomains
+    *[f'node-{i}' for i in range(1, 1001)],  # Numbered subdomains
     *[f'test-{i}' for i in range(1, 501)],  # Test subdomains
     *[f'backup-{i}' for i in range(1, 501)], # Backup subdomains
     *[f'service-{i}' for i in range(1, 501)],  # Subdomains for services

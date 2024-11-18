@@ -1,3 +1,5 @@
+import json
+import os
 import re
 from typing import List, Tuple, Any
 
@@ -63,3 +65,23 @@ def load_targets(input_file:str) -> tuple[List[str], List[str]]:
         vsc_log.error_status_result(_module_name, "FAILED", f"No IPs or domains found in '{input_file}'")
 
     return ips, domains
+
+
+def load_external_servers(protocols:List[str], config_file:str) -> List[dict[str, int, str, str]]:
+    """
+    Loads the external servers from the given JSON configuration file.
+    :param protocols: List of protocol names for the remote connection (example: ['ssh', 'ftp']).
+    :param config_file: Path to the JSON configuration file.
+    :return: List of external server dictionaries with 'host', 'port', 'user', and 'password'.
+    """
+    if not os.path.exists(config_file):
+        vsc_log.error_status_result(_module_name, "ERROR", f"Configuration file '{config_file}' not found.")
+        return []
+
+    with open(config_file, 'r') as file:
+        data = json.load(file)
+        servers = [server for server in data.get("servers", [])
+                   if any(protocol in server.get("protocol", []) for protocol in protocols)]
+        vsc_log.info_status_result(_module_name, "SUCCESS", f"Loaded {len(servers)} external servers from '{config_file}'")
+        return servers
+
