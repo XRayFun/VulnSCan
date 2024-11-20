@@ -67,7 +67,7 @@ def load_targets(input_file:str) -> tuple[List[str], List[str]]:
     return ips, domains
 
 
-def load_external_servers(protocols:List[str], config_file:str) -> List[dict[str, int, str, str]]:
+def load_external_servers(protocols:List[str], config_file:str) -> List[dict]:
     """
     Loads the external servers from the given JSON configuration file.
     :param protocols: List of protocol names for the remote connection (example: ['ssh', 'ftp']).
