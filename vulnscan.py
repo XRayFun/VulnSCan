@@ -1,11 +1,11 @@
 import argparse
 import importlib
-import logging
 
-from _conf import BANNER, FILE_LOG_LEVEL, CONSOLE_LOG_LEVEL, LOG_MESSAGE_FORMAT, LOG_OUTPUT_FOLDER
-from _log import vsc_log, LogLevel
+from _conf import BANNER
+from _log import vsc_log, LogLevel, logger
 
 
+@logger("main")
 def vuln_scan():
     vsc_log.log(LogLevel.INFO, f"{BANNER}")
     parser = argparse.ArgumentParser(description="Vulnerability Scanner with multiple scan modes.")
@@ -19,20 +19,18 @@ def vuln_scan():
             command_module = importlib.import_module(f"{known_args.module}.{known_args.command}")
         else:
             command_module = importlib.import_module(f"{known_args.module}")
-    except ModuleNotFoundError:
-        vsc_log.log(LogLevel.ERROR, f"The command '{known_args.module}.{known_args.command}' is not recognized.")
+    except ModuleNotFoundError as e:
+        vsc_log.log(LogLevel.ERROR, f"Module '{known_args.module}.{known_args.command}' not found: {e}")
+        return 1
+    except Exception as e:
+        vsc_log.log(LogLevel.ERROR, f"Unexpected error during import: {e}")
         return 1
 
-    vsc_log.log(LogLevel.DEBUG, "Logger setup with:"
-                   f"\n\t- Log level (console):  {logging.getLevelName(CONSOLE_LOG_LEVEL)}"
-                   f"\n\t- Log level (file):  {logging.getLevelName(FILE_LOG_LEVEL)}"
-                   f"\n\t- Log format: {LOG_MESSAGE_FORMAT}"
-                   f"\n\t- Log folder: {LOG_OUTPUT_FOLDER}\n")
+    vsc_log.log_settings()
 
     # Pass the remaining arguments to the command module
     vsc_log.log(LogLevel.INFO, f"Starting scan with {known_args.module}.{known_args.command} module.")
     command_module.main(remaining_args)
-
     return 0
 
 

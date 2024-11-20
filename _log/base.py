@@ -73,3 +73,11 @@ class BaseLogger:
 
     def _error(self, message):
         self._logger.error(message)
+
+
+    def log_settings(self):
+        self.log(LogLevel.DEBUG, "Logger setup with:"
+                                 f"\n\t- Log level (console):  {logging.getLevelName(CONSOLE_LOG_LEVEL)}"
+                                 f"\n\t- Log level (file):  {logging.getLevelName(FILE_LOG_LEVEL)}"
+                                 f"\n\t- Log format: {LOG_MESSAGE_FORMAT}"
+                                 f"\n\t- Log folder: {LOG_OUTPUT_FOLDER}\n")

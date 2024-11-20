@@ -9,8 +9,8 @@ BANNER = """
     ██╔╝ ██╗██║  ██║██║  ██║   ██║   ██║     ╚██████╔╝██║ ╚████║    
     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝      ╚═════╝ ╚═╝  ╚═══╝
 
-    Vulnerability scanner for web servers and applications.
-    Authored by XRayFun - 2024
+    "VulnSCan" is the vulnerability scanner for web servers and applications.
+    Authored by XRayFun - 2024 (https://github.com/XRayFun/VulnSCan)
 """
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

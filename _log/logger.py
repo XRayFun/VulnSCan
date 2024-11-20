@@ -1,7 +1,3 @@
-from logging import Logger, WARNING
-
-from cryptography.utils import deprecated
-
 from _log.base import BaseLogger, LogLevel
 
 
