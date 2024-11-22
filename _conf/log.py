@@ -14,8 +14,12 @@ FILE_LOG_LEVEL = logging.DEBUG
 
 CONSOLE_LOG_LEVEL = logging.INFO
 
+DEFAULT_AUTOLOG_LEVEL = logging.DEBUG
+
 MODULE_WIDTH = 26
 
 IP_WIDTH = 22
 
 STATUS_WIDTH = 18
+
+SENSITIVE_KEYS = ['user', 'username', 'password', 'pkey']

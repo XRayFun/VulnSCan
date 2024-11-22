@@ -2,7 +2,7 @@ from datetime import datetime
 import logging
 from enum import Enum
 
-from _conf import LOG_MESSAGE_FORMAT, FILE_LOG_LEVEL, CONSOLE_LOG_LEVEL, LOG_OUTPUT_FOLDER, MODULE_WIDTH, IP_WIDTH, STATUS_WIDTH
+from _conf import LOG_MESSAGE_FORMAT, FILE_LOG_LEVEL, CONSOLE_LOG_LEVEL, LOG_OUTPUT_FOLDER, MODULE_WIDTH, IP_WIDTH, STATUS_WIDTH, DEFAULT_AUTOLOG_LEVEL
 
 
 class LogLevel(Enum):
@@ -11,6 +11,7 @@ class LogLevel(Enum):
     INFO = logging.INFO
     WARN = logging.WARN
     ERROR = logging.ERROR
+    DEFAULT_AUTOLOG_LEVEL = DEFAULT_AUTOLOG_LEVEL
 
 
 def _format_message(module, result, ip=None, status=None):
