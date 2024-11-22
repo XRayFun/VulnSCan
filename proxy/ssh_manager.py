@@ -1,7 +1,6 @@
 import random
 from typing import List
 
-from _conf import EXTERNAL_SERVERS_FILE
 from _log import vsc_log, logger
 from _utils import load_external_servers
 from proxy.ssh_server import ServerSSH
@@ -12,7 +11,7 @@ _module_name = "proxy.manager"
 
 class ManagerSSH:
     """Manage a collection of ServerSSH instances."""
-
+    @logger(_module_name)
     def __init__(self, servers:List[dict]):
         """
         Initialize the bot-net manager with server configurations.
@@ -23,8 +22,8 @@ class ManagerSSH:
             server["host"]: ServerSSH(
                 hostname=server["host"],
                 port=server["port"],
-                username=server["user"],
-                password=server.get("password"),
+                username=server.get("user"),
+                password=server.get("password")
             )
             for server in servers
         }
@@ -36,7 +35,7 @@ class ManagerSSH:
             try:
                 server.connect()
             except Exception as e:
-                vsc_log.error_result(_module_name, f"Failed to connect to {server.hostname}: {e}")
+                vsc_log.error_result(_module_name, f"Failed to connect to {server.remote_host}: {e}")
 
     @logger(_module_name)
     def disconnect_all(self):
@@ -68,9 +67,9 @@ class ManagerSSH:
 
         server = random.choice(list(self.ssh_servers.values()))
         try:
-            return server.hostname, server.execute_command(command)
+            return server.str_local, server.execute_command(command)
         except Exception as e:
-            vsc_log.error_result(_module_name, f"Error executing command on {server.hostname}: {e}")
+            vsc_log.error_result(_module_name, f"Error executing command on {server.str_local}: {e}")
 
     @logger(_module_name)
     def execute_on_all(self, command:str) -> dict[str, tuple[str, str] | tuple[str, None] | None] :
@@ -83,20 +82,17 @@ class ManagerSSH:
         results = {}
         for server in self.ssh_servers.values():
             try:
-                results.update({server.hostname: server.execute_command(command)})
+                results.update({server.str_local: server.execute_command(command)})
             except Exception as e:
-                results.update({server.hostname: f"Error: {e}"})
+                results.update({server.str_local: f"Error: {e}"})
         return results
 
-instance_ssh_manager = ManagerSSH(load_external_servers(["ssh"], EXTERNAL_SERVERS_FILE))
-try:
-    instance_ssh_manager.connect_all()
-except Exception as e:
-    vsc_log.error_result(_module_name, e)
+instance_ssh_manager = ManagerSSH(load_external_servers(["ssh"]))
 
 
 if __name__ == "__main__":
     try:
+        instance_ssh_manager.connect_all()
         # Execute the command on a random server
         host, output = instance_ssh_manager.execute_on_random("whoami")
         vsc_log.info_ip_result(_module_name, host, f"Output from random server:\n{' '.join(list(filter(None, output)))}")
@@ -107,11 +103,9 @@ if __name__ == "__main__":
         for host in all_outputs:
             vsc_log.info_ip_result(_module_name, host, f"Output:\n{' '.join(list(filter(None, all_outputs.get(host))))}")
 
-        all_outputs = instance_ssh_manager.execute_on_all("cd /;ls -la")
-        vsc_log.info_result(_module_name, "Outputs from all servers:")
-        for host in all_outputs:
-            vsc_log.info_ip_result(_module_name, host, f"Output:\n{' '.join(list(filter(None, all_outputs.get(host))))}")
+        [srv.start_proxy() for srv in instance_ssh_manager.get_all_servers()]
 
     finally:
         # We're disconnecting from all servers
+        input()
         instance_ssh_manager.disconnect_all()

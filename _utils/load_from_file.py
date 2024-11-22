@@ -1,11 +1,14 @@
 import json
 import os
-import re
-from typing import List, Tuple, Any
-
 import aiofiles
+import random
+import re
+from typing import List
+
+from _conf import PROXY_JSON_FILE
 from _log import vsc_log, logger
 from _utils.cleaner import get_filtered_list, get_filtered_str
+
 
 _module_name = "utils.load_from_file"
 
@@ -67,7 +70,7 @@ def load_targets(input_file:str) -> tuple[List[str], List[str]]:
     return ips, domains
 
 
-def load_external_servers(protocols:List[str], config_file:str) -> List[dict]:
+def load_external_servers(protocols:List[str], config_file:str = PROXY_JSON_FILE) -> List[dict]:
     """
     Loads the external servers from the given JSON configuration file.
     :param protocols: List of protocol names for the remote connection (example: ['ssh', 'ftp']).
@@ -85,3 +88,36 @@ def load_external_servers(protocols:List[str], config_file:str) -> List[dict]:
         vsc_log.info_status_result(_module_name, "SUCCESS", f"Loaded {len(servers)} external servers from '{config_file}'")
         return servers
 
+
+@logger(_module_name)
+def get_random_port_from_json(file_path:str = PROXY_JSON_FILE) -> int:
+    """
+    Reads a JSON file to get a range of ports and returns a random port in that range.
+
+    :param file_path: Path to the JSON file.
+    :return: A random port within the specified range.
+    :raises: ValueError if the range is invalid or the JSON format is incorrect.
+    """
+    try:
+        # Load the JSON file
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+
+        # Extract port range
+        ports = data.get("local_ports", {})
+        port_from = ports.get("from")
+        port_to = ports.get("to")
+
+        # Validate the range
+        if not isinstance(port_from, int) or not isinstance(port_to, int):
+            vsc_log.error_result(_module_name, "Invalid port range: 'from' and 'to' must be integers.")
+            return random.randint(11000, 12000)
+        if port_from > port_to:
+            vsc_log.error_result(_module_name, "Invalid port range: 'from' cannot be greater than 'to'.")
+            return random.randint(11000, 12000)
+
+        # Generate a random port
+        return random.randint(port_from, port_to)
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        vsc_log.error_result(_module_name, f"Error reading JSON file: {e}")
+        return random.randint(11000, 12000)
